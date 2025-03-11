@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Questionnaire Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+        .container {
+            max-width: 600px;
+            margin: auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0px 0px 10px rgba(0, 0, 0, 0.1);
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        label {
+            font-weight: bold;
+        }
+        select, textarea, input {
+            width: 100%;
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        #questionnaire-output {
+            margin-top: 20px;
+            padding: 15px;
+            background: #e9ecef;
+            border-radius: 5px;
+            white-space: pre-line;
+        }
+        #download {
+            display: none;
+            margin-top: 10px;
+            background: #28a745;
+        }
+        #download:hover {
+            background: #218838;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h2>Generate Questionnaire</h2>
+    <form id="questionnaire-form">
+        <label>Category:</label>
+        <select id="category" name="category" required>
+            <option value="food">Food</option>
+            <option value="clothes">Clothes</option>
+            <option value="cosmetics">Cosmetics</option>
+        </select>
+
+        <label>Language:</label>
+        <select id="language" name="language" required>
+            <option value="English">English</option>
+            <option value="Hindi">Hindi</option>
+            <option value="Spanish">Spanish</option>
+            <option value="French">French</option>
+        </select>
+
+        <label>Specific Constraints:</label>
+        <textarea id="specific_constraints" name="specific_constraints"></textarea>
+
+        <label>Number of Questions:</label>
+        <input type="number" id="num_questions" name="num_questions" min="1" required>
+
+        <label>Website URLs (comma-separated):</label>
+        <input type="text" id="website_urls" name="website_urls">
+
+        <label>Upload Files (PDF, DOCX, Text):</label>
+        <input type="file" id="uploaded_files" name="uploaded_files" multiple>
+
+        <button type="submit">Generate</button>
+    </form>
+
+    <div id="questionnaire-output">No questionnaire generated.</div>
+    <button id="download">Download as DOCX</button>
+</div>
+
+<script>
+document.getElementById("questionnaire-form").addEventListener("submit", async function(event) {
+    event.preventDefault();
+
+    let formData = new FormData();
+    
+    // Get form values
+    let category = document.getElementById("category").value;
+    let language = document.getElementById("language").value;
+    let specificConstraints = document.getElementById("specific_constraints").value || "None";
+    let numQuestions = document.getElementById("num_questions").value;
+    let websiteUrls = document.getElementById("website_urls").value;
+
+    formData.append("category", category);
+    formData.append("language", language);
+    formData.append("specific_constraints", specificConstraints);
+    formData.append("num_questions", numQuestions);
+    formData.append("website_urls", websiteUrls);
+
+    let files = document.getElementById("uploaded_files").files;
+    
+    for (let i = 0; i < files.length; i++) {
+        formData.append("uploaded_files", files[i]);
+    }
+
+    try {
+        let response = await fetch("https://questionaireapi-6y7d.onrender.com/generate_initial_questionnaire", {
+            method: "POST",
+            body: formData
+        });
+
+        let result = await response.json();
+        let outputDiv = document.getElementById("questionnaire-output");
+        let downloadBtn = document.getElementById("download");
+
+        if (result.questions && result.questions.length > 0) {
+            outputDiv.innerHTML = `
+                <h3>Generated Questionnaire:</h3>
+                <p><strong>Category:</strong> ${category}</p>
+                <p><strong>Language:</strong> ${language}</p>
+                <p><strong>Specific Constraints:</strong> ${specificConstraints}</p>
+                <p><strong>Number of Questions:</strong> ${numQuestions}</p>
+                <ol>
+            `;
+
+            result.questions.forEach((question, index) => {
+                outputDiv.innerHTML += `<li><strong>Q${index + 1}:</strong> ${question}</li>`;
+            });
+
+            outputDiv.innerHTML += "</ol>";
+            window.generatedQuestionnaire = result.questions.join("\n");
+            downloadBtn.style.display = "block";
+        } else {
+            outputDiv.innerHTML = `<p style="color:red;">No questionnaire available. Please check input files or parameters.</p>`;
+            downloadBtn.style.display = "none";
+        }
+    } catch (error) {
+        console.error("❌ Error:", error);
+        document.getElementById("questionnaire-output").innerHTML = `<p style="color:red;">Error generating questionnaire.</p>`;
+    }
+});
+</script>
+
+</body>
+</html>
