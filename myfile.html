@@ -95,6 +95,9 @@
         <label>Upload Files (PDF, DOCX, Text):</label>
         <input type="file" id="uploaded_files" name="uploaded_files" multiple>
 
+        <label>API Key:</label>
+        <input type="password" id="api_key" name="api_key" required>
+
         <button type="submit">Generate</button>
     </form>
 
@@ -107,37 +110,43 @@ document.getElementById("questionnaire-form").addEventListener("submit", async f
     event.preventDefault();
 
     let formData = new FormData();
-    
-    // Get form values
     let category = document.getElementById("category").value;
     let language = document.getElementById("language").value;
     let specificConstraints = document.getElementById("specific_constraints").value || "None";
     let numQuestions = document.getElementById("num_questions").value;
     let websiteUrls = document.getElementById("website_urls").value;
+    let apiKey = document.getElementById("api_key").value;
 
     formData.append("category", category);
     formData.append("language", language);
     formData.append("specific_constraints", specificConstraints);
     formData.append("num_questions", numQuestions);
     formData.append("website_urls", websiteUrls);
+    formData.append("key", apiKey);
 
     let files = document.getElementById("uploaded_files").files;
-    
     for (let i = 0; i < files.length; i++) {
         formData.append("uploaded_files", files[i]);
     }
 
     try {
-        let response = await fetch("https://questionaireapi-6y7d.onrender.com/generate_initial_questionnaire", {
+        let response = await fetch("http://127.0.0.1:5000/generate_initial_questionnaire", {
             method: "POST",
             body: formData
         });
 
-        let result = await response.json();
         let outputDiv = document.getElementById("questionnaire-output");
         let downloadBtn = document.getElementById("download");
 
-        if (result.questions && result.questions.length > 0) {
+        if (!response.ok) {
+            let errorMsg = await response.json();
+            outputDiv.innerHTML = `<p style="color:red;">Error: ${errorMsg.error}</p>`;
+            downloadBtn.style.display = "none";
+            return;
+        }
+
+        let result = await response.json();
+        if (result.length > 0) {
             outputDiv.innerHTML = `
                 <h3>Generated Questionnaire:</h3>
                 <p><strong>Category:</strong> ${category}</p>
@@ -146,21 +155,19 @@ document.getElementById("questionnaire-form").addEventListener("submit", async f
                 <p><strong>Number of Questions:</strong> ${numQuestions}</p>
                 <ol>
             `;
-
-            result.questions.forEach((question, index) => {
-                outputDiv.innerHTML += `<li><strong>Q${index + 1}:</strong> ${question}</li>`;
+            result.forEach((question, index) => {
+                outputDiv.innerHTML += `<li><strong>Q${index + 1}:</strong> ${question.q} <em>(${question.t})</em><em>(${question.c})</em></li>`;
             });
-
             outputDiv.innerHTML += "</ol>";
-            window.generatedQuestionnaire = result.questions.join("\n");
+            window.generatedQuestionnaire = result.map(q => `${q.q} (${q.t})`).join("\n");
             downloadBtn.style.display = "block";
         } else {
-            outputDiv.innerHTML = `<p style="color:red;">No questionnaire available. Please check input files or parameters.</p>`;
+            outputDiv.innerHTML = `<p style="color:red;">No questionnaire generated. Check your inputs.</p>`;
             downloadBtn.style.display = "none";
         }
     } catch (error) {
         console.error("❌ Error:", error);
-        document.getElementById("questionnaire-output").innerHTML = `<p style="color:red;">Error generating questionnaire.</p>`;
+        document.getElementById("questionnaire-output").innerHTML = `<p style="color:red;">Internal Server Error.</p>`;
     }
 });
 </script>
